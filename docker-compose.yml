@@ -2,13 +2,35 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-generator
     ports:
       - "8000:8000"
     environment:
       - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
       - SERVER_URL=http://localhost:8000
+    env_file:
+      - .env
     volumes:
       - ./uploads:/app/uploads
-      - ./.env:/app/.env
+      # 开发模式：取消注释下面的行以启用热重载
+      # - ./api:/app/api
+      # - ./main.py:/app/main.py
+      # - ./config.py:/app/config.py
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - video-net
+
+networks:
+  video-net:
+    driver: bridge

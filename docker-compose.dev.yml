@@ -1,0 +1,45 @@
+version: '3.8'
+
+# 开发环境配置 - 支持热重载
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-generator-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+      - HOST=0.0.0.0
+      - PORT=8000
+      - SERVER_URL=http://localhost:8000
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/app/uploads
+      # 挂载源代码以支持热重载
+      - ./api:/app/api
+      - ./main.py:/app/main.py
+      - ./config.py:/app/config.py
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    networks:
+      - video-net
+
+  # 可选：添加前端开发服务器
+  # web:
+  #   image: node:18-alpine
+  #   container_name: video-generator-web
+  #   working_dir: /app
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./web:/app
+  #   command: sh -c "npm install && npm run dev"
+  #   networks:
+  #     - video-net
+
+networks:
+  video-net:
+    driver: bridge
