@@ -1,27 +1,48 @@
 # Consistent Video Generator
 
-一个基于 FastAPI + Vue3 的视频生成全栈应用。
+一个基于 FastAPI + Vue3 的视频生成全栈应用，使用阿里云DashScope API生成AI视频。
 
-## 项目结构
+## ✨ 功能特性
+
+- 🎬 双图片上传（首帧 + 末帧）生成流畅视频
+- 🤖 集成阿里云DashScope视频生成API
+- 📊 实时状态查询和自动轮询
+- 🎥 视频在线预览和下载
+- 🎨 现代化UI设计（Vue 3 + 渐变背景）
+- 📱 响应式布局，支持移动端
+- 🐳 完整的Docker部署支持
+- 🔄 开发环境热重载
+
+## 📁 项目结构
 
 ```
 .
-├── api/                    # 后端API模块
+├── api/                      # 后端API模块
 │   ├── __init__.py
-│   └── generator.py        # 视频生成API
-├── web/                    # 前端Vue3项目
-│   ├── src/               # Vue源代码
-│   ├── public/            # 静态资源
-│   ├── package.json       # 前端依赖
-│   └── vite.config.js     # Vite配置
-├── uploads/               # 上传文件存储
-├── venv/                  # Python虚拟环境
-├── main.py               # FastAPI应用入口
-├── config.py             # 配置管理
-├── requirements.txt      # Python依赖
-├── Dockerfile           # Docker镜像构建
-├── docker-compose.yml   # Docker编排
-└── start-dev.ps1        # 开发环境启动脚本
+│   └── generator.py          # 视频生成API（3个接口）
+├── web/                      # 前端Vue3项目
+│   ├── src/
+│   │   ├── api/             # API服务层
+│   │   ├── components/      # Vue组件
+│   │   ├── App.vue          # 主应用
+│  🛠️ 技术栈
+
+### 后端
+- **FastAPI** - 现代、快速的Python Web框架
+- **DashScope SDK** - 阿里云视频生成服务
+- **Pydantic** - 数据验证和配置管理
+- **Uvicorn** - 高性能ASGI服务器
+
+### 前端
+- **Vue 3** - 渐进式JavaScript框架（Composition API）
+- **Vite** - 下一代前端构建工具
+- **原生Fetch API** - HTTP请求
+
+### 部署
+- **Docker** - 容器化部署（多阶段构建）
+- **Docker Compose** - 容器编排.yml  # 开发环境Docker配置
+├── DOCKER.md               # Docker详细文档
+└── start-dev.ps1           # 本地开发启动脚本
 
 ```
 
@@ -90,7 +111,11 @@ npm run dev
 # 构建并启动
 docker-compose up -d
 
-# 查看日志
+# 查
+
+访问 http://localhost:8000
+
+> 📖 查看 [DOCKER.md](DOCKER.md) 获取完整的Docker部署文档，包括开发环境配置、故障排查等。看日志
 docker-compose logs -f
 
 # 停止服务
@@ -103,42 +128,129 @@ docker-compose down
 # 1. 构建前端
 cd web
 npm install
-npm run build
-cd ..
-
-# 2. 启动后端（会自动托管前端静态文件）
-python main.py
-```
-
-访问 http://localhost:8000 即可使用应用。
-
-## API 文档
+npm📡 API 文档
 
 启动服务后访问：
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
-## 主要API端点
+### 主要API端点
 
-- `POST /api/v1/generate` - 上传图片生成视频
-- `GET /api/v1/status/{task_id}` - 查询视频生成状态
-- `GET /health` - 健康检查
-- `GET /api` - API信息
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| `POST` | `/api/v1/generate` | 上传2个图片文件并生成视频 |
+| `GET` | `/api/v1/status/{task_id}` | 查询视频生成任务状态（不等待） |
+| `GET` | `/api/v1/wait/{task_id}` | 等待视频生成完成（阻塞） |
+| `GET` | `/health` | 健康检查 |
+| `GET` | `/api` | API基本信息 |
 
-## 配置说明
+### API使用示例
 
-### 后端配置 (.env)
+**生⚙️ 配置说明
+
+### 环境变量 (.env)
+
+创建 `.env` 文件（复制 `.env.example`）：
 
 ```env
-# DashScope配置
+# DashScope配置（必需）
 DASHSCOPE_API_KEY=your_api_key_here
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1
 
 # 服务器配置
 HOST=0.0.0.0
 PORT=8000
 DEBUG=true
 SERVER_URL=http://localhost:8000
+
+# 视频生成默认配置
+DEFAULT_PROMPT=写实风格，高质量视频，流畅的镜头运动
 ```
+
+### 前端环境配置
+
+开发和生产环境配置：
+- `web/.env.development` - 开发环境
+- `web/.env.production` - 生产环境
+
+## 🔧 开发指南
+
+### 前端开发
+
+前端项目已配置API代理，在开发环境下：
+- 前端地址: http://127.0.0.1:3000
+- API代理: `/api` → `http://localhost:8000/api`
+- 上传代理: `/uploads` → `http://localhost:8000/uploads`
+
+修改 `web/src/components/VideoGenerator.vue` 来定制UI和功能。
+
+### 后端开发
+
+修改 `api/generator.py` 来添加或修改API逻辑。
+
+**热重载：** FastAPI在DEBUG模式下支持自动重载。
+
+### Docker开发环境
+
+使用开发环境配置支持代码热重载：
+
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+## 📂 文件上传限制
+
+- **支持格式**: JPG, JPEG, PNG, GIF, BMP, WEBP
+- **最大文件大小**: 10MB
+- **文件数量**: 必须上传2个图片（首帧 + 末帧）
+
+## 🔍 视频生成流程
+
+1. 用户上传2个图片文件
+2. 后端保存文件并调用DashScope API
+3. 返回任务ID
+4. 前端开始轮询状态（每2秒）
+5. 当状态从 `RUNNING` 变为 `SUCCEEDED` 或 `FAILED` 时停止轮询
+6. 成功时显示视频播放器
+
+## 🐛 故障排查
+
+### 前端无法连接后端
+- 检查后端是否运行在 http://localhost:8000
+- 查看浏览器控制台的错误信息
+- 确认Vite代理配置正确
+
+### API_KEY未配置
+```bash
+DASHSCOPE_API_KEY 未配置，请在 .env 文件中设置
+```
+解决：在 `.env` 文件中添加有效的API密钥
+
+### Docker容器无法启动
+```bash
+# 查看日志
+docker-compose logs app
+
+# 检查配置
+docker-compose config
+```
+
+更多问题请查看 [DOCKER.md](DOCKER.md) 的故障排查部分。
+
+## 📚 相关文档
+
+- [Docker部署指南](DOCKER.md) - 完整的Docker部署文档
+- [FastAPI文档](https://fastapi.tiangolo.com/) - FastAPI官方文档
+- [Vue 3文档](https://vuejs.org/) - Vue.js官方文档
+- [DashScope文档](https://help.aliyun.com/document_detail/2712520.html) - 阿里云视频生成API
+
+## 📄 许可证
+
+MIT License
+
+## 🤝 贡献
+
+欢迎提交Issue和Pull Request！
 
 ### 前端配置
 
