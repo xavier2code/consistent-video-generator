@@ -24,10 +24,15 @@ uploads_dir = "uploads"
 os.makedirs(uploads_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
-# 注册路由
+# 注册API路由
 app.include_router(generator_router, prefix="/api/v1")
 
-@app.get("/")
+# 生产环境：托管前端静态文件
+frontend_dist = os.path.join("web", "dist")
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+
+@app.get("/api")
 async def root():
     return {
         "message": "欢迎使用 Consistent Video Generator API",

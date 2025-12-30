@@ -44,3 +44,8 @@ wheels/
 # 上传文件
 uploads/
 !uploads/.gitkeep
+
+# Node.js / 前端
+web/node_modules/
+web/dist/
+web/.vite/
