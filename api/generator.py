@@ -135,20 +135,55 @@ async def generate_video(
         )
         
         if rsp.status_code == HTTPStatus.OK:
+            # 删除本地文件
+            try:
+                for filename in uploaded_filenames:
+                    file_path = os.path.join(UPLOAD_DIR, filename)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+            except Exception as e:
+                # 文件删除失败不影响返回结果，仅记录日志
+                print(f"删除本地文件失败: {str(e)}")
+            
             return VideoGenerateResponse(
                 task_id=rsp.output.task_id,
                 status="submitted",
                 message=f"视频生成任务已提交，使用文件: {uploaded_filenames[0]}, {uploaded_filenames[1]}"
             )
         else:
+            # 提交失败也删除本地文件
+            try:
+                for filename in uploaded_filenames:
+                    file_path = os.path.join(UPLOAD_DIR, filename)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+            except Exception:
+                pass
+            
             raise HTTPException(
                 status_code=rsp.status_code,
                 detail=f"任务提交失败: {rsp.message}"
             )
     
     except HTTPException:
+        # HTTP异常也删除本地文件
+        try:
+            for filename in uploaded_filenames:
+                file_path = os.path.join(UPLOAD_DIR, filename)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+        except Exception:
+            pass
         raise
     except Exception as e:
+        # 其他异常也删除本地文件
+        try:
+            for filename in uploaded_filenames:
+                file_path = os.path.join(UPLOAD_DIR, filename)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+        except Exception:
+            pass
         raise HTTPException(
             status_code=500,
             detail=f"调用视频生成API失败: {str(e)}"
