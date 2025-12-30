@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router
+from fastapi.staticfiles import StaticFiles
+from api.generator import router as generator_router
+import os
 
 app = FastAPI(
     title="Consistent Video Generator API",
@@ -17,8 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 挂载静态文件目录，使上传的文件可通过HTTP访问
+uploads_dir = "uploads"
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
 # 注册路由
-app.include_router(router, prefix="/api/v1")
+app.include_router(generator_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
