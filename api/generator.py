@@ -235,7 +235,7 @@ async def generate_video_deprecated(
             negative_prompt="低质量, 模糊, 畸形, 变形, 多余的肢体, 错误的解剖结构, 脸部缺陷, 文字, 水印。",
             first_frame_url=first_frame_url,
             last_frame_url=last_frame_url,
-            resolution="720P",
+            resolution="480",
             prompt_extend=True
         )
         
