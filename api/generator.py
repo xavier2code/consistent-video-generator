@@ -384,14 +384,19 @@ async def generate_video_sequence(
     background_tasks: BackgroundTasks = None
 ):
     """
-    上传6张图片生成序列视频（自动合并）
+    上传多张图片生成序列视频（自动合并）
     
     参数：
-    - files: 6张图片文件（按顺序）
+    - files: 1-6张图片文件（按顺序）
     - prompt: 视频生成提示词（可选）
     
+    说明：
+    - 上传n张图片，生成n-1个视频片段
+    - 例如：4张图片 → 3个视频（1-2, 2-3, 3-4）
+    - 所有视频自动合并成一个完整视频
+    
     流程：
-    1. 生成5个视频片段（图片1-2, 2-3, 3-4, 4-5, 5-6）
+    1. 根据图片数量生成对应数量的视频片段
     2. 下载所有视频片段
     3. 合并成一个完整视频
     4. 返回合并后的视频URL
@@ -402,11 +407,24 @@ async def generate_video_sequence(
             detail="DASHSCOPE_API_KEY 未配置，请在 .env 文件中设置"
         )
     
-    # 检查文件数量
-    if len(files) != 6:
+    # 检查文件数量（1-6张）
+    num_files = len(files)
+    if num_files < 1:
         raise HTTPException(
             status_code=400,
-            detail=f"必须上传6张图片文件，当前上传了 {len(files)} 个"
+            detail="至少需要上传1张图片"
+        )
+    if num_files > 6:
+        raise HTTPException(
+            status_code=400,
+            detail=f"最多支持上传6张图片，当前上传了 {num_files} 张"
+        )
+    
+    # 如果只有1张图片，无法生成视频
+    if num_files == 1:
+        raise HTTPException(
+            status_code=400,
+            detail="至少需要2张图片才能生成视频"
         )
     
     uploaded_filenames = []
@@ -459,15 +477,20 @@ async def generate_video_sequence(
     # 生成任务ID
     sequence_task_id = f"seq_{uuid.uuid4().hex[:16]}"
     
+    # 计算需要生成的视频数量（n张图片生成n-1个视频）
+    num_videos = num_files - 1
+    
+    print(f"收到 {num_files} 张图片，将生成 {num_videos} 个视频片段")
+    
     try:
-        # 生成5个视频片段
+        # 生成视频片段
         task_ids = []
         
-        for i in range(5):
+        for i in range(num_videos):
             first_frame_url = "file://" + os.path.abspath(os.path.join(UPLOAD_DIR, uploaded_filenames[i]))
             last_frame_url = "file://" + os.path.abspath(os.path.join(UPLOAD_DIR, uploaded_filenames[i + 1]))
             
-            print(f"生成视频片段 {i+1}/5: {uploaded_filenames[i]} -> {uploaded_filenames[i+1]}")
+            print(f"生成视频片段 {i+1}/{num_videos}: {uploaded_filenames[i]} -> {uploaded_filenames[i+1]}")
             
             # 异步调用视频生成API
             rsp = VideoSynthesis.async_call(
@@ -489,15 +512,15 @@ async def generate_video_sequence(
                     status_code=rsp.status_code,
                     detail=f"提交第 {i+1} 个视频任务失败: {rsp.message}"
                 )
-        
-        # 等待所有视频生成完成并下载
-        video_files = []
-        
-        for i, task_id in enumerate(task_ids):
-            print(f"等待视频片段 {i+1}/5 完成...")
+        {num_videos} 完成...")
             video_url = await wait_for_video(task_id)
             
             if video_url:
+                # 下载视频
+                video_filename = f"{sequence_task_id}_part_{i+1}.mp4"
+                video_path = os.path.join(VIDEO_DIR, video_filename)
+                
+                print(f"下载视频片段 {i+1}/{num_videos}
                 # 下载视频
                 video_filename = f"{sequence_task_id}_part_{i+1}.mp4"
                 video_path = os.path.join(VIDEO_DIR, video_filename)
@@ -519,18 +542,29 @@ async def generate_video_sequence(
                     detail=f"第 {i+1} 个视频生成失败或超时"
                 )
         
-        # 合并所有视频
-        merged_filename = f"{sequence_task_id}_merged.mp4"
-        merged_path = os.path.join(VIDEO_DIR, merged_filename)
-        
-        print(f"合并 {len(video_files)} 个视频片段...")
-        merge_success = merge_videos(video_files, merged_path)
-        
-        if not merge_success:
-            raise HTTPException(
-                status_code=500,
-                detail="视频合并失败"
-            )
+        # 如果只有1个视频，直接返回不需要合并
+        if num_videos == 1:
+            # 只有一个视频，直接使用
+            video_filename = f"{sequence_task_id}_merged.mp4"
+            merged_path = os.path.join(VIDEO_DIR, video_filename)
+            
+            # 重命名为merged
+            os.rename(video_files[0], merged_path)
+            
+            print(f"单个视频，无需合并")
+        else:
+            # 合并所有视频
+            merged_filename = f"{sequence_task_id}_merged.mp4"
+            merged_path = os.path.join(VIDEO_DIR, merged_filename)
+            
+            print(f"合并 {len(video_files)} 个视频片段...")
+            merge_success = merge_videos(video_files, merged_path)
+            
+            if not merge_success:
+                raise HTTPException(
+            for video_file in video_files:
+                if os.path.exists(video_file):
+                    os.remove(video_file)
         
         # 清理临时文件
         try:
@@ -544,9 +578,9 @@ async def generate_video_sequence(
             for video_file in video_files:
                 if os.path.exists(video_file):
                     os.remove(video_file)
-        except Exception as e:
-            print(f"清理临时文件失败: {str(e)}")
-        
+        except Excepf"序列视频生成并合并完成（{num_files}张图片 → {num_videos}个视频）",
+            total_videos=num_videos,
+            processed_videos=num_videos
         # 生成视频访问URL
         merged_video_url = f"{settings.SERVER_URL}/videos/{merged_filename}"
         
