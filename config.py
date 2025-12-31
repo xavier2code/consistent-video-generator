@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     SERVER_URL: str = "http://localhost:8000"
     
     # 视频生成默认配置
-    DEFAULT_PROMPT: str = "写实风格，高质量视频，流畅的镜头运动"
+    DEFAULT_PROMPT: str = "写实风格，高质量视频，同一个人物的从开始到结束的过渡，清晰细腻，光影自然，色彩丰富。"
     
     class Config:
         env_file = ".env"
