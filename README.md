@@ -4,9 +4,8 @@
 
 ## ✨ 功能特性
 
-- 🎬 **单视频生成** - 上传2张图片生成流畅过渡视频
-- 🎞️ **序列视频生成** - 上传2-6张图片，自动生成并合并成完整视频
-- 🤖 集成阿里云DashScope视频生成API
+- �️ **序列视频生成** - 上传2-6张图片，自动生成并合并成完整视频
+- 🤖 集成阿里云DashScope视频生成API（wan2.2-kf2v-flash模型）
 - 📊 实时状态查询和自动轮询
 - 🎥 视频在线预览和下载
 - 🎨 现代化UI设计（Vue 3 + 渐变背景）
@@ -142,7 +141,6 @@ npm📡 API 文档
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
-| `POST` | `/api/v1/generate` | 上传2张图片生成单个视频 |
 | `POST` | `/api/v1/generate-sequence` | 上传2-6张图片生成序列视频并合并 |
 | `GET` | `/api/v1/status/{task_id}` | 查询视频生成任务状态（不等待） |
 | `GET` | `/api/v1/wait/{task_id}` | 等待视频生成完成（阻塞） |
@@ -206,20 +204,10 @@ docker-compose -f docker-compose.dev.yml up -d
 ## 📂 文件上传限制
 
 - **支持格式**: JPG, JPEG, PNG, GIF, BMP, WEBP
-- **最大文件大小**
-  - 单视频生成：2张图片（首帧 + 末帧）
-  - 序列视频生成：2-6张图片（按时间顺序
-- **文件数量**: 必须上传2个图片（首帧 + 末帧）
-### 单视频生成 (2张图片)
+- **最大文件大小**: 10MB
+- **文件数量**: 2-6张图片（按时间顺序上传）
 
-1. 用户上传2张图片（首帧 + 末帧）
-2. 后端保存文件并调用DashScope API
-3. 返回任务ID
-4. 前端开始轮询状态（每2秒）
-5. 当状态变为 `SUCCEEDED` 或 `FAILED` 时停止轮询
-6. 成功时显示视频播放器
-
-### 序列视频生成 (2-6张图片)
+## 🔍 视频生成流程
 
 1. 用户按时间顺序上传2-6张图片
 2. 后端根据图片数量生成 n-1 个视频片段
@@ -230,7 +218,25 @@ docker-compose -f docker-compose.dev.yml up -d
 
 **处理时间参考：**
 - 2张图片：约30秒-2分钟（1个视频，无需合并）
-- 3张FFmpeg未安装（序列视频功能需要）
+- 3张图片：约1-4分钟（2个视频 + 合并）
+- 4张图片：约2-6分钟（3个视频 + 合并）
+- 5张图片：约3-8分钟（4个视频 + 合并）
+- 6张图片：约5-15分钟（5个视频 + 合并）
+
+## 🐛 故障排查
+
+### 前端无法连接后端
+- 检查后端是否运行在 http://localhost:8000
+- 查看浏览器控制台的错误信息
+- 确认Vite代理配置正确
+
+### API_KEY未配置
+```bash
+DASHSCOPE_API_KEY 未配置，请在 .env 文件中设置
+```
+解决：在 `.env` 文件中添加有效的API密钥
+
+### FFmpeg未安装（序列视频功能需要）
 ```bash
 # Windows (使用Chocolatey)
 choco install ffmpeg
@@ -244,11 +250,10 @@ sudo yum install ffmpeg      # CentOS/RHEL
 
 # macOS
 brew install ffmpeg
-```docs/DOCKER.md) - 完整的Docker部署文档
-- [FastAPI文档](https://fastapi.tiangolo.com/) - FastAPI官方文档
-- [Vue 3文档](https://vuejs.org/) - Vue.js官方文档
-- [DashScope文档](https://help.aliyun.com/document_detail/2712520.html) - 阿里云视频生成API
-- [FFmpeg文档](https://ffmpeg.org/documentation.html) - FFmpeg官方文档
+```
+
+### 序列视频生成失败
+- 确保已安装FFmpeg并添加到系统PATH
 - 检查磁盘空间是否充足（每个视频约10-30MB）
 - 确认图片按正确顺序上传
 - 查看后端日志了解详细错误信息

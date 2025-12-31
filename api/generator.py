@@ -141,12 +141,15 @@ async def wait_for_video(task_id: str) -> Optional[str]:
     return None
 
 
-@router.post("/generate", response_model=VideoGenerateResponse, tags=["generator"])
-async def generate_video(
+# 已弃用：使用 /generate-sequence 替代，支持动态数量图片(2-6张)
+# @router.post("/generate", response_model=VideoGenerateResponse, tags=["generator"])
+async def generate_video_deprecated(
     files: List[UploadFile] = File(...),
     prompt: Optional[str] = None
 ):
     """
+    [已弃用] 请使用 /generate-sequence 接口
+    
     上传2个图片并生成视频（一步完成）
     
     参数：
