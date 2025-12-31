@@ -18,9 +18,11 @@ FROM python:3.10-slim
 # 设置工作目录
 WORKDIR /app
 
-# 安装系统依赖（如果需要）
+# 安装系统依赖（ffmpeg用于视频合并）
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -37,8 +39,8 @@ COPY api/ ./api/
 COPY --from=frontend-builder /app/web/dist ./web/dist
 
 # 创建必要的目录
-RUN mkdir -p uploads && \
-    chmod 755 uploads
+RUN mkdir -p uploads videos && \
+    chmod 755 uploads videos
 
 # 创建非root用户
 RUN useradd -m -u 1000 appuser && \

@@ -18,6 +18,7 @@ services:
       - .env
     volumes:
       - ./uploads:/app/uploads
+      - ./videos:/app/videos
       # 挂载源代码以支持热重载
       - ./api:/app/api
       - ./main.py:/app/main.py

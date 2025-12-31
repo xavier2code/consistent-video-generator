@@ -17,6 +17,7 @@ services:
       - .env
     volumes:
       - ./uploads:/app/uploads
+      - ./videos:/app/videos
       # 开发模式：取消注释下面的行以启用热重载
       # - ./api:/app/api
       # - ./main.py:/app/main.py
