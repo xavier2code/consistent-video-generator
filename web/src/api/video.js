@@ -5,10 +5,10 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
- * 生成视频 - 上传图片文件
- * @param {File[]} files - 两个图片文件数组
+ * 生成序列视频 - 上传2-6张图片文件
+ * @param {File[]} files - 2-6个图片文件数组
  * @param {string} prompt - 可选的提示词
- * @returns {Promise<{task_id: string, status: string, message: string}>}
+ * @returns {Promise<{task_id: string, status: string, message: string, merged_video_url?: string}>}
  */
 export async function generateVideo(files, prompt = '') {
   const formData = new FormData();
@@ -23,7 +23,7 @@ export async function generateVideo(files, prompt = '') {
     formData.append('prompt', prompt);
   }
   
-  const response = await fetch(`${API_BASE_URL}/v1/generate`, {
+  const response = await fetch(`${API_BASE_URL}/v1/generate-sequence`, {
     method: 'POST',
     body: formData,
   });

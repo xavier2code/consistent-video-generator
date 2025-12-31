@@ -3,10 +3,8 @@ import { ref, computed } from 'vue';
 import { generateVideo, getVideoStatus } from '../api/video.js';
 
 // 状态管理
-const firstImage = ref(null);
-const secondImage = ref(null);
-const firstImagePreview = ref('');
-const secondImagePreview = ref('');
+const images = ref([]);
+const imagePreviews = ref([]);
 const prompt = ref('');
 const isUploading = ref(false);
 const isPolling = ref(false);
@@ -16,10 +14,20 @@ const videoUrl = ref('');
 const errorMessage = ref('');
 const statusMessage = ref('');
 
+const MAX_IMAGES = 6;
+const MIN_IMAGES = 2;
+
 // 计算属性
 const canSubmit = computed(() => {
-  return firstImage.value && secondImage.value && !isUploading.value && !isPolling.value;
+  return images.value.length >= MIN_IMAGES && !isUploading.value && !isPolling.value;
 });
+
+const canAddMore = computed(() => {
+  return images.value.length < MAX_IMAGES;
+});
+
+const imageCount = computed(() => images.value.length);
+const videoCount = computed(() => Math.max(0, images.value.length - 1));
 
 const statusText = computed(() => {
   const statusMap = {
@@ -33,9 +41,15 @@ const statusText = computed(() => {
 });
 
 // 文件选择处理
-function handleFileSelect(event, imageType) {
+function handleFileSelect(event) {
   const file = event.target.files[0];
   if (!file) return;
+  
+  // 检查数量限制
+  if (images.value.length >= MAX_IMAGES) {
+    errorMessage.value = `最多只能上传${MAX_IMAGES}张图片`;
+    return;
+  }
   
   // 验证文件类型
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
@@ -55,31 +69,35 @@ function handleFileSelect(event, imageType) {
   // 预览图片
   const reader = new FileReader();
   reader.onload = (e) => {
-    if (imageType === 'first') {
-      firstImage.value = file;
-      firstImagePreview.value = e.target.result;
-    } else {
-      secondImage.value = file;
-      secondImagePreview.value = e.target.result;
-    }
+    images.value.push(file);
+    imagePreviews.value.push(e.target.result);
   };
   reader.readAsDataURL(file);
+  
+  // 清空input以允许重复选择同一文件
+  event.target.value = '';
 }
 
 // 清除图片
-function clearImage(imageType) {
-  if (imageType === 'first') {
-    firstImage.value = null;
-    firstImagePreview.value = '';
-  } else {
-    secondImage.value = null;
-    secondImagePreview.value = '';
-  }
+function removeImage(index) {
+  images.value.splice(index, 1);
+  imagePreviews.value.splice(index, 1);
+}
+
+// 清除所有图片
+function clearAllImages() {
+  images.value = [];
+  imagePreviews.value = [];
 }
 
 // 提交生成视频
 async function handleSubmit() {
   if (!canSubmit.value) return;
+  
+  if (images.value.length < MIN_IMAGES) {
+    errorMessage.value = `至少需要上传${MIN_IMAGES}张图片`;
+    return;
+  }
   
   errorMessage.value = '';
   statusMessage.value = '';
@@ -87,15 +105,22 @@ async function handleSubmit() {
   isUploading.value = true;
   
   try {
-    // 上传文件并生成视频
-    const response = await generateVideo([firstImage.value, secondImage.value], prompt.value);
+    // 上传文件并生成序列视频
+    const response = await generateVideo(images.value, prompt.value);
     
     taskId.value = response.task_id;
-    taskStatus.value = 'PENDING';
-    statusMessage.value = response.message;
+    taskStatus.value = response.status;
     
-    // 开始轮询
-    startPolling();
+    // 如果是completed状态，直接显示视频
+    if (response.status === 'completed' && response.merged_video_url) {
+      videoUrl.value = response.merged_video_url;
+      statusMessage.value = response.message;
+      isUploading.value = false;
+    } else {
+      statusMessage.value = response.message || `正在生成${videoCount.value}个视频片段...`;
+      // 开始轮询（如果需要）
+      startPolling();
+    }
   } catch (error) {
     errorMessage.value = error.message;
   } finally {
@@ -141,10 +166,8 @@ async function pollStatus() {
 
 // 重置表单
 function resetForm() {
-  firstImage.value = null;
-  secondImage.value = null;
-  firstImagePreview.value = '';
-  secondImagePreview.value = '';
+  images.value = [];
+  imagePreviews.value = [];
   prompt.value = '';
   taskId.value = '';
   taskStatus.value = '';
@@ -163,8 +186,8 @@ function downloadVideo() {
 
 <template>
   <div class="video-generator">
-    <h1>AI 视频生成器</h1>
-    <p class="subtitle">上传首帧和末帧图片，AI 帮你生成流畅的视频</p>
+    <h1>AI 序列视频生成器</h1>
+    <p class="subtitle">上传 2-6 张图片，AI 自动生成流畅过渡的完整视频</p>
     
     <!-- 错误提示 -->
     <div v-if="errorMessage" class="alert alert-error">
@@ -179,57 +202,56 @@ function downloadVideo() {
     
     <!-- 上传表单 -->
     <div class="upload-container" v-if="!videoUrl">
-      <div class="upload-section">
-        <h3>首帧图片</h3>
-        <div class="image-upload">
-          <div v-if="!firstImagePreview" class="upload-placeholder" @click="$refs.firstFileInput.click()">
+      <!-- 图片数量提示 -->
+      <div class="image-count-info">
+        <div class="count-display">
+          <span class="count-label">已上传:</span>
+          <span class="count-number">{{ imageCount }}/{{ MAX_IMAGES }}</span>
+          <span class="video-info" v-if="imageCount >= MIN_IMAGES">
+            → 将生成 {{ videoCount }} 个视频片段
+          </span>
+        </div>
+      </div>
+
+      <!-- 图片预览网格 -->
+      <div class="images-grid">
+        <div 
+          v-for="(preview, index) in imagePreviews" 
+          :key="index"
+          class="image-item"
+        >
+          <div class="image-preview">
+            <img :src="preview" :alt="`图片 ${index + 1}`" />
+            <div class="image-order">{{ index + 1 }}</div>
+            <button @click="removeImage(index)" class="btn-remove" type="button">×</button>
+          </div>
+        </div>
+        
+        <!-- 添加图片按钮 -->
+        <div 
+          v-if="canAddMore" 
+          class="image-item add-image"
+          @click="$refs.fileInput.click()"
+        >
+          <div class="upload-placeholder">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <circle cx="8.5" cy="8.5" r="1.5"></circle>
               <polyline points="21 15 16 10 5 21"></polyline>
             </svg>
-            <p>点击上传图片</p>
-            <span class="file-info">支持 JPG、PNG、GIF 等格式，最大 10MB</span>
+            <p>添加图片</p>
+            <span class="file-info">最多 {{ MAX_IMAGES }} 张</span>
           </div>
-          <div v-else class="image-preview">
-            <img :src="firstImagePreview" alt="首帧预览" />
-            <button @click="clearImage('first')" class="btn-remove" type="button">×</button>
-          </div>
-          <input 
-            ref="firstFileInput"
-            type="file" 
-            accept="image/*" 
-            @change="handleFileSelect($event, 'first')"
-            style="display: none"
-          />
         </div>
       </div>
       
-      <div class="upload-section">
-        <h3>末帧图片</h3>
-        <div class="image-upload">
-          <div v-if="!secondImagePreview" class="upload-placeholder" @click="$refs.secondFileInput.click()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21 15 16 10 5 21"></polyline>
-            </svg>
-            <p>点击上传图片</p>
-            <span class="file-info">支持 JPG、PNG、GIF 等格式，最大 10MB</span>
-          </div>
-          <div v-else class="image-preview">
-            <img :src="secondImagePreview" alt="末帧预览" />
-            <button @click="clearImage('second')" class="btn-remove" type="button">×</button>
-          </div>
-          <input 
-            ref="secondFileInput"
-            type="file" 
-            accept="image/*" 
-            @change="handleFileSelect($event, 'second')"
-            style="display: none"
-          />
-        </div>
-      </div>
+      <input 
+        ref="fileInput"
+        type="file" 
+        accept="image/*" 
+        @change="handleFileSelect"
+        style="display: none"
+      />
       
       <!-- 提示词输入 -->
       <div class="prompt-section">
@@ -354,24 +376,61 @@ h1 {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.upload-section {
+.image-count-info {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.count-display {
+  font-size: 1.1rem;
+  color: #2c3e50;
+}
+
+.count-label {
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+.count-number {
+  font-weight: 700;
+  color: #42b883;
+  font-size: 1.3rem;
+}
+
+.video-info {
+  margin-left: 1rem;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
-.upload-section h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
-  font-size: 1.1rem;
+.image-item {
+  aspect-ratio: 1;
+  position: relative;
 }
 
-.image-upload {
-  position: relative;
+.image-item.add-image {
+  cursor: pointer;
 }
 
 .upload-placeholder {
   border: 2px dashed #ddd;
   border-radius: 8px;
-  padding: 3rem 2rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
@@ -385,18 +444,21 @@ h1 {
 
 .upload-placeholder svg {
   color: #999;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  width: 36px;
+  height: 36px;
 }
 
 .upload-placeholder p {
   color: #666;
-  margin-bottom: 0.5rem;
+  margin: 0.5rem 0;
   font-weight: 500;
+  font-size: 0.9rem;
 }
 
 .file-info {
   color: #999;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 .image-preview {
@@ -404,12 +466,30 @@ h1 {
   border-radius: 8px;
   overflow: hidden;
   border: 2px solid #42b883;
+  height: 100%;
 }
 
 .image-preview img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   display: block;
+}
+
+.image-order {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: rgba(66, 184, 131, 0.9);
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .btn-remove {
