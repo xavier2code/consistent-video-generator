@@ -1,5 +1,13 @@
 # Consistent Video Generator
 
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com/)
+[![Vue](https://img.shields.io/badge/Vue-3.0+-42b883.svg)](https://vuejs.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.0+-646cff.svg)](https://vitejs.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ed.svg)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-Required-green.svg)](https://ffmpeg.org/)
+
 一个基于 FastAPI + Vue3 的视频生成全栈应用，使用阿里云DashScope API生成AI视频。
 
 ## ✨ 功能特性
@@ -259,43 +267,15 @@ brew install ffmpeg
 - 查看后端日志了解详细错误信息
 
 ### Docker容器无法启动
-```bash
-# 查看日志
-docker-compose logs app
-
-# 检查配置
-docker-compose config
-```
-
-更多问题请查看 [docs/DOCKER.md](docs/
-### 前端无法连接后端
-- 检查后端是否运行在 http://localhost:8000
-- 查看浏览器控制台的错误信息
-- 确认Vite代理配置正确
-
-### API_KEY未配置
-```bash
-DASHSCOPE_API_KEY 未配置，请在 .env 文件中设置
-```
-解决：在 `.env` 文件中添加有效的API密钥
-
-### Docker容器无法启动
-```bash
-# 查看日志
-docker-compose logs app
-
-# 检查配置
-docker-compose config
-```
-
-更多问题请查看 [DOCKER.md](DOCKER.md) 的故障排查部分。
+```bashDOCKER.md) 的故障排查部分。
 
 ## 📚 相关文档
 
-- [Docker部署指南](DOCKER.md) - 完整的Docker部署文档
+- [Docker部署指南](docs/DOCKER.md) - 完整的Docker部署文档
 - [FastAPI文档](https://fastapi.tiangolo.com/) - FastAPI官方文档
 - [Vue 3文档](https://vuejs.org/) - Vue.js官方文档
 - [DashScope文档](https://help.aliyun.com/document_detail/2712520.html) - 阿里云视频生成API
+- [FFmpeg文档](https://ffmpeg.org/documentation.html) - FFmpeg官方文档
 
 ## 📄 许可证
 
@@ -303,20 +283,7 @@ MIT License
 
 ## 🤝 贡献
 
-欢迎提交Issue和Pull Request！
-
-### 前端配置
-
-开发环境和生产环境配置分别在：
-- `web/.env.development`
-- `web/.env.production`
-
-## 开发指南
-
-### 前端开发
-
-前端项目已配置API代理，在开发环境下：
-- 前端运行在 http://127.0.0.1:3000
+欢迎提交Issue和Pull Request！端运行在 http://127.0.0.1:3000
 - API请求会自动代理到后端 http://localhost:8000
 
 ### 后端开发
