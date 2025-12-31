@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     SERVER_URL: str = "http://localhost:8000"
     
     # 视频生成默认配置
-    DEFAULT_PROMPT: str = "同一人物在不同时期的平滑过渡，保持面部特征一致性，自然流畅的渐变效果，高质量画面，细腻的细节变化，柔和的光影过渡，真实的时间流逝感"
+    DEFAULT_PROMPT: str = "写实风格，人物a平滑变换成人物b，背景自然过渡，光影真实，色彩丰富。"
     
     class Config:
         env_file = ".env"

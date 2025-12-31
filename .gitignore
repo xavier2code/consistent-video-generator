@@ -58,6 +58,10 @@ pnpm-debug.log*
 uploads/
 !uploads/.gitkeep
 
+# 生成的视频文件
+videos/
+!videos/.gitkeep
+
 # Node.js / 前端
 web/node_modules/
 web/dist/

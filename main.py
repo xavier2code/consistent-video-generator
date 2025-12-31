@@ -21,8 +21,11 @@ app.add_middleware(
 
 # 挂载静态文件目录，使上传的文件可通过HTTP访问
 uploads_dir = "uploads"
+videos_dir = "videos"
 os.makedirs(uploads_dir, exist_ok=True)
+os.makedirs(videos_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+app.mount("/videos", StaticFiles(directory=videos_dir), name="videos")
 
 # 注册API路由
 app.include_router(generator_router, prefix="/api/v1")
