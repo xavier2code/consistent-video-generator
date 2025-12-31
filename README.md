@@ -4,7 +4,8 @@
 
 ## ✨ 功能特性
 
-- 🎬 双图片上传（首帧 + 末帧）生成流畅视频
+- 🎬 **单视频生成** - 上传2张图片生成流畅过渡视频
+- 🎞️ **序列视频生成** - 上传2-6张图片，自动生成并合并成完整视频
 - 🤖 集成阿里云DashScope视频生成API
 - 📊 实时状态查询和自动轮询
 - 🎥 视频在线预览和下载
@@ -31,7 +32,8 @@
 - **FastAPI** - 现代、快速的Python Web框架
 - **DashScope SDK** - 阿里云视频生成服务
 - **Pydantic** - 数据验证和配置管理
-- **Uvicorn** - 高性能ASGI服务器
+- **httpx** - 异步HTTP客户端
+- **ffmpeg-python** - 视频处理和合并
 
 ### 前端
 - **Vue 3** - 渐进式JavaScript框架（Composition API）
@@ -40,6 +42,8 @@
 
 ### 部署
 - **Docker** - 容器化部署（多阶段构建）
+- **Docker Compose** - 容器编排
+- **FFmpeg** - 视频处理工具
 - **Docker Compose** - 容器编排.yml  # 开发环境Docker配置
 ├── DOCKER.md               # Docker详细文档
 └── start-dev.ps1           # 本地开发启动脚本
@@ -112,7 +116,7 @@ npm run dev
 docker-compose up -d
 
 # 查
-
+docs/DOCKER.md](docs/
 访问 http://localhost:8000
 
 > 📖 查看 [DOCKER.md](DOCKER.md) 获取完整的Docker部署文档，包括开发环境配置、故障排查等。看日志
@@ -138,7 +142,8 @@ npm📡 API 文档
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
-| `POST` | `/api/v1/generate` | 上传2个图片文件并生成视频 |
+| `POST` | `/api/v1/generate` | 上传2张图片生成单个视频 |
+| `POST` | `/api/v1/generate-sequence` | 上传2-6张图片生成序列视频并合并 |
 | `GET` | `/api/v1/status/{task_id}` | 查询视频生成任务状态（不等待） |
 | `GET` | `/api/v1/wait/{task_id}` | 等待视频生成完成（阻塞） |
 | `GET` | `/health` | 健康检查 |
@@ -201,20 +206,63 @@ docker-compose -f docker-compose.dev.yml up -d
 ## 📂 文件上传限制
 
 - **支持格式**: JPG, JPEG, PNG, GIF, BMP, WEBP
-- **最大文件大小**: 10MB
+- **最大文件大小**
+  - 单视频生成：2张图片（首帧 + 末帧）
+  - 序列视频生成：2-6张图片（按时间顺序
 - **文件数量**: 必须上传2个图片（首帧 + 末帧）
+### 单视频生成 (2张图片)
 
-## 🔍 视频生成流程
-
-1. 用户上传2个图片文件
+1. 用户上传2张图片（首帧 + 末帧）
 2. 后端保存文件并调用DashScope API
 3. 返回任务ID
 4. 前端开始轮询状态（每2秒）
-5. 当状态从 `RUNNING` 变为 `SUCCEEDED` 或 `FAILED` 时停止轮询
+5. 当状态变为 `SUCCEEDED` 或 `FAILED` 时停止轮询
 6. 成功时显示视频播放器
 
-## 🐛 故障排查
+### 序列视频生成 (2-6张图片)
 
+1. 用户按时间顺序上传2-6张图片
+2. 后端根据图片数量生成 n-1 个视频片段
+   - 例如：4张图片 → 3个视频（图1→图2, 图2→图3, 图3→图4）
+3. 等待所有视频生成完成并下载
+4. 使用FFmpeg合并所有视频片段（单视频则跳过）
+5. 返回合并后的完整视频URL
+
+**处理时间参考：**
+- 2张图片：约30秒-2分钟（1个视频，无需合并）
+- 3张FFmpeg未安装（序列视频功能需要）
+```bash
+# Windows (使用Chocolatey)
+choco install ffmpeg
+
+# 或下载并添加到PATH
+# https://ffmpeg.org/download.html
+
+# Linux
+sudo apt-get install ffmpeg  # Ubuntu/Debian
+sudo yum install ffmpeg      # CentOS/RHEL
+
+# macOS
+brew install ffmpeg
+```docs/DOCKER.md) - 完整的Docker部署文档
+- [FastAPI文档](https://fastapi.tiangolo.com/) - FastAPI官方文档
+- [Vue 3文档](https://vuejs.org/) - Vue.js官方文档
+- [DashScope文档](https://help.aliyun.com/document_detail/2712520.html) - 阿里云视频生成API
+- [FFmpeg文档](https://ffmpeg.org/documentation.html) - FFmpeg官方文档
+- 检查磁盘空间是否充足（每个视频约10-30MB）
+- 确认图片按正确顺序上传
+- 查看后端日志了解详细错误信息
+
+### Docker容器无法启动
+```bash
+# 查看日志
+docker-compose logs app
+
+# 检查配置
+docker-compose config
+```
+
+更多问题请查看 [docs/DOCKER.md](docs/
 ### 前端无法连接后端
 - 检查后端是否运行在 http://localhost:8000
 - 查看浏览器控制台的错误信息

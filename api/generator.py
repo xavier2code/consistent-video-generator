@@ -512,7 +512,12 @@ async def generate_video_sequence(
                     status_code=rsp.status_code,
                     detail=f"提交第 {i+1} 个视频任务失败: {rsp.message}"
                 )
-        {num_videos} 完成...")
+        
+        # 等待所有视频生成完成并下载
+        video_files = []
+        
+        for i, task_id in enumerate(task_ids):
+            print(f"等待视频片段 {i+1}/{num_videos} 完成...")
             video_url = await wait_for_video(task_id)
             
             if video_url:
@@ -520,12 +525,7 @@ async def generate_video_sequence(
                 video_filename = f"{sequence_task_id}_part_{i+1}.mp4"
                 video_path = os.path.join(VIDEO_DIR, video_filename)
                 
-                print(f"下载视频片段 {i+1}/{num_videos}
-                # 下载视频
-                video_filename = f"{sequence_task_id}_part_{i+1}.mp4"
-                video_path = os.path.join(VIDEO_DIR, video_filename)
-                
-                print(f"下载视频片段 {i+1}/5: {video_url}")
+                print(f"下载视频片段 {i+1}/{num_videos}: {video_url}")
                 success = await download_video(video_url, video_path)
                 
                 if success:
@@ -562,6 +562,11 @@ async def generate_video_sequence(
             
             if not merge_success:
                 raise HTTPException(
+                    status_code=500,
+                    detail="视频合并失败"
+                )
+            
+            # 删除视频片段（保留合并后的视频）
             for video_file in video_files:
                 if os.path.exists(video_file):
                     os.remove(video_file)
@@ -573,25 +578,20 @@ async def generate_video_sequence(
                 file_path = os.path.join(UPLOAD_DIR, filename)
                 if os.path.exists(file_path):
                     os.remove(file_path)
-            
-            # 删除视频片段（保留合并后的视频）
-            for video_file in video_files:
-                if os.path.exists(video_file):
-                    os.remove(video_file)
-        except Excepf"序列视频生成并合并完成（{num_files}张图片 → {num_videos}个视频）",
-            total_videos=num_videos,
-            processed_videos=num_videos
+        except Exception as e:
+            print(f"清理临时文件失败: {str(e)}")
+        
         # 生成视频访问URL
-        merged_video_url = f"{settings.SERVER_URL}/videos/{merged_filename}"
+        merged_video_url = f"{settings.SERVER_URL}/videos/{os.path.basename(merged_path)}"
         
         print(f"序列视频生成完成: {merged_video_url}")
         
         return VideoSequenceResponse(
             task_id=sequence_task_id,
             status="completed",
-            message="序列视频生成并合并完成",
-            total_videos=5,
-            processed_videos=5,
+            message=f"序列视频生成并合并完成（{num_files}张图片 → {num_videos}个视频）",
+            total_videos=num_videos,
+            processed_videos=num_videos,
             merged_video_url=merged_video_url
         )
     
